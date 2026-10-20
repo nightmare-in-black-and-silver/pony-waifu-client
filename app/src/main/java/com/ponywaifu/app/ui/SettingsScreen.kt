@@ -21,12 +21,14 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.material.icons.filled.Palette
 
 @Composable
 fun SettingsScreen(
     serverAddress: String,
     onBack: () -> Unit,
     onServerConfigurationClick: () -> Unit,
+    onAppearanceSettingsClick: () -> Unit,
     onDebugSettingsClick: () -> Unit
 ) {
     Column(
@@ -55,6 +57,20 @@ fun SettingsScreen(
         HorizontalDivider(
             modifier = Modifier.padding(vertical = 16.dp)
         )
+
+        SettingsItem(
+            title = "Appearance",
+            description = "Colour palettes and display preferences",
+            icon = {
+                Icon(
+                    imageVector = Icons.Default.Palette,
+                    contentDescription = null
+                )
+            },
+            onClick = onAppearanceSettingsClick
+        )
+
+        HorizontalDivider()
 
         SettingsItem(
             title = "Server Configuration",

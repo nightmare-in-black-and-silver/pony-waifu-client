@@ -1,7 +1,6 @@
 
 package com.ponywaifu.app.viewmodel
 
-import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.ponywaifu.app.network.ServerConnectionTester
 import kotlinx.coroutines.flow.MutableStateFlow

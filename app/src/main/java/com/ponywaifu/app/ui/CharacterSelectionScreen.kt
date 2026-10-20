@@ -11,30 +11,30 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.material3.Card
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
 import com.ponywaifu.app.model.Character
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import androidx.compose.foundation.layout.Row
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-
-
 
 @Composable
 fun CharacterSelectionScreen(
@@ -47,7 +47,6 @@ fun CharacterSelectionScreen(
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        // Header and settings button
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -68,7 +67,6 @@ fun CharacterSelectionScreen(
             }
         }
 
-        // Character grid
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -79,66 +77,49 @@ fun CharacterSelectionScreen(
                 items = characters,
                 key = { it.id }
             ) { character ->
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .alpha(if (character.available) 1f else 0.4f)
-                        .clickable(enabled = character.available) {
-                            onCharacterSelected(character)
-                        }
-                ) {
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally
-                    ) {
-                        CharacterPicture(
-                            path = character.profilePicturePath,
-                            name = character.name
-                        )
-
-                        Text(
-                            text = character.name,
-                            style = MaterialTheme.typography.titleMedium,
-                            modifier = Modifier.padding(12.dp)
-                        )
-                    }
-                }
+                CharacterPortrait(
+                    character = character,
+                    onClick = { onCharacterSelected(character) }
+                )
             }
         }
     }
 }
 
-
 @Composable
-private fun CharacterPicture(
-    path: String?,
-    name: String
+private fun CharacterPortrait(
+    character: Character,
+    onClick: () -> Unit
 ) {
-    val bitmap = produceState<Bitmap?>(
+    val bitmap by produceState<Bitmap?>(
         initialValue = null,
-        key1 = path
+        key1 = character.profilePicturePath
     ) {
         value = withContext(Dispatchers.IO) {
-            path?.let { BitmapFactory.decodeFile(it) }
+            character.profilePicturePath?.let { path ->
+                BitmapFactory.decodeFile(path)
+            }
         }
     }
 
     Box(
         modifier = Modifier
             .fillMaxWidth()
-            .aspectRatio(1f),
+            .aspectRatio(1f)
+            .alpha(if (character.available) 1f else 0.4f)
+            .clip(CircleShape)
+            .clickable(
+                enabled = character.available,
+                onClick = onClick
+            ),
         contentAlignment = Alignment.Center
     ) {
-        if (bitmap.value != null) {
+        if (bitmap != null) {
             Image(
-                bitmap = bitmap.value!!.asImageBitmap(),
-                contentDescription = name,
+                bitmap = bitmap!!.asImageBitmap(),
+                contentDescription = character.name,
                 modifier = Modifier.fillMaxSize(),
                 contentScale = ContentScale.Crop
-            )
-        } else {
-            Text(
-                text = "No Image",
-                style = MaterialTheme.typography.bodySmall
             )
         }
     }

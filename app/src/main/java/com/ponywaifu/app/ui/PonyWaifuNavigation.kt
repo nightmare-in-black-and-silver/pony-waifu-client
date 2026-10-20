@@ -3,34 +3,41 @@ package com.ponywaifu.app.ui
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Button
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.ponywaifu.app.data.ServerSettings
+import com.ponywaifu.app.model.Character
+import com.ponywaifu.app.viewmodel.AppearanceSettingsViewModel
+import com.ponywaifu.app.viewmodel.DebugSettingsViewModel
 import com.ponywaifu.app.viewmodel.PonyWaifuViewModel
+import com.ponywaifu.app.viewmodel.ConversationViewModel
 
 private enum class Screen {
     SERVER_CONFIGURATION,
     CHARACTER_SELECTION,
+    CONVERSATION,
     SETTINGS,
+    APPEARANCE_SETTINGS,
     DEBUG_SETTINGS
 }
 
 @Composable
-fun PonyWaifuApp(
+fun PonyWaifuNavigation(
     viewModel: PonyWaifuViewModel,
+    appearanceViewModel: AppearanceSettingsViewModel,
+    debugSettingsViewModel: DebugSettingsViewModel,
+    conversationViewModel: ConversationViewModel,
     serverSettings: ServerSettings
 ) {
     var serverAddress by rememberSaveable {
@@ -47,20 +54,62 @@ fun PonyWaifuApp(
         )
     }
 
+    val currentMood by conversationViewModel.currentMood
+        .collectAsStateWithLifecycle()
+
+    val subtitle by conversationViewModel.subtitle
+        .collectAsStateWithLifecycle()
+
+    val isResponding by conversationViewModel.isResponding
+        .collectAsStateWithLifecycle()
+
+    var selectedCharacter by remember {
+        mutableStateOf<Character?>(null)
+    }
+
+    // Application state
     val isTesting by viewModel.isTesting.collectAsStateWithLifecycle()
     val connectionSuccessful by viewModel.connectionSuccessful.collectAsStateWithLifecycle()
     val connectionMessage by viewModel.connectionMessage.collectAsStateWithLifecycle()
     val characters by viewModel.characters.collectAsStateWithLifecycle()
 
+    // Appearance settings state
+    val selectedPalette by appearanceViewModel.selectedPalette
+        .collectAsStateWithLifecycle()
+
+    // Debug settings state
+    val manualMoodEnabled by debugSettingsViewModel.manualMoodEnabled
+        .collectAsStateWithLifecycle()
+
+    val availableMoods by debugSettingsViewModel.availableMoods
+        .collectAsStateWithLifecycle()
+
+    val typingEnabled by debugSettingsViewModel.typingEnabled
+        .collectAsStateWithLifecycle()
+
+    val isLoadingMoods by debugSettingsViewModel.isLoadingMoods
+        .collectAsStateWithLifecycle()
+
+    val moodError by debugSettingsViewModel.moodError
+        .collectAsStateWithLifecycle()
+
+    // Load characters and server-specific debug settings
+    // whenever the configured server changes.
     LaunchedEffect(serverAddress) {
         serverAddress?.let { address ->
             viewModel.loadCharacters(address)
+            debugSettingsViewModel.loadSettings(address)
         }
     }
 
     fun navigateBack() {
         when (currentScreen) {
-            Screen.DEBUG_SETTINGS -> {
+            Screen.CONVERSATION -> {
+                currentScreen = Screen.CHARACTER_SELECTION
+            }
+
+            Screen.DEBUG_SETTINGS,
+            Screen.APPEARANCE_SETTINGS -> {
                 currentScreen = Screen.SETTINGS
             }
 
@@ -80,8 +129,10 @@ fun PonyWaifuApp(
     }
 
     BackHandler(
-        enabled = currentScreen == Screen.SETTINGS ||
+        enabled = currentScreen == Screen.CONVERSATION ||
+                currentScreen == Screen.SETTINGS ||
                 currentScreen == Screen.DEBUG_SETTINGS ||
+                currentScreen == Screen.APPEARANCE_SETTINGS ||
                 (currentScreen == Screen.SERVER_CONFIGURATION &&
                         serverAddress != null)
     ) {
@@ -95,6 +146,7 @@ fun PonyWaifuApp(
             modifier = Modifier.padding(innerPadding)
         ) {
             when (currentScreen) {
+
                 Screen.SERVER_CONFIGURATION -> {
                     key(currentScreen) {
                         ServerConfigurationScreen(
@@ -122,13 +174,44 @@ fun PonyWaifuApp(
                 Screen.CHARACTER_SELECTION -> {
                     CharacterSelectionScreen(
                         characters = characters,
-                        onCharacterSelected = {
-                            // Conversation screen comes later.
+                        onCharacterSelected = { character ->
+                            conversationViewModel.selectCharacter(character)
+                            selectedCharacter = character
+                            currentScreen = Screen.CONVERSATION
                         },
                         onSettingsClick = {
                             currentScreen = Screen.SETTINGS
                         }
                     )
+                }
+
+
+                Screen.CONVERSATION -> {
+                    selectedCharacter?.let { character ->
+                        ConversationScreen(
+                            character = character,
+                            subtitle = subtitle,
+                            isResponding = isResponding,
+                            typingEnabled = typingEnabled,
+                            manualMoodEnabled = manualMoodEnabled,
+                            availableMoods = availableMoods,
+                            selectedMood = currentMood,
+                            onMoodSelected = { mood ->
+                                conversationViewModel.selectMood(
+                                    mood,
+                                    availableMoods
+                                )
+                            },
+                            onBack = {
+                                currentScreen = Screen.CHARACTER_SELECTION
+                            },
+                            onSendMessage = {
+                                // We'll connect this when we implement llm.chat.
+                                // Do not call sendMessage() yet because
+                                // networking isn't implemented.
+                            }
+                        )
+                    }
                 }
 
                 Screen.SETTINGS -> {
@@ -141,24 +224,41 @@ fun PonyWaifuApp(
                             viewModel.resetConnectionTest()
                             currentScreen = Screen.SERVER_CONFIGURATION
                         },
+                        onAppearanceSettingsClick = {
+                            currentScreen = Screen.APPEARANCE_SETTINGS
+                        },
                         onDebugSettingsClick = {
                             currentScreen = Screen.DEBUG_SETTINGS
                         }
                     )
                 }
 
-                Screen.DEBUG_SETTINGS -> {
-                    Column {
-                        Text("Debug Settings")
-
-                        Button(
-                            onClick = {
-                                currentScreen = Screen.SETTINGS
-                            }
-                        ) {
-                            Text("Back to Settings")
+                Screen.APPEARANCE_SETTINGS -> {
+                    AppearanceSettingsScreen(
+                        selectedPalette = selectedPalette,
+                        onPaletteSelected = { palette ->
+                            appearanceViewModel.selectPalette(palette)
+                        },
+                        onBack = {
+                            currentScreen = Screen.SETTINGS
                         }
-                    }
+                    )
+                }
+
+                Screen.DEBUG_SETTINGS -> {
+                    DebugSettingsScreen(
+                        manualMoodEnabled = manualMoodEnabled,
+                        typingEnabled = typingEnabled,
+                        onManualMoodEnabledChanged = { enabled ->
+                            debugSettingsViewModel.setManualMoodEnabled(enabled)
+                        },
+                        onTypingEnabledChanged = { enabled ->
+                            debugSettingsViewModel.setTypingEnabled(enabled)
+                        },
+                        onBack = {
+                            currentScreen = Screen.SETTINGS
+                        }
+                    )
                 }
             }
         }
