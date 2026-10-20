@@ -1,6 +1,6 @@
+package com.ponywaifu.app.ui
 
-package com.ponywaifu.app
-
+import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
@@ -28,23 +28,47 @@ import androidx.compose.ui.unit.dp
 import com.ponywaifu.app.model.Character
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import androidx.compose.foundation.layout.Row
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+
+
 
 @Composable
 fun CharacterSelectionScreen(
     characters: List<Character>,
-    onCharacterSelected: (Character) -> Unit
+    onCharacterSelected: (Character) -> Unit,
+    onSettingsClick: () -> Unit
 ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
     ) {
-        Text(
-            text = "Select a Character",
-            style = MaterialTheme.typography.headlineMedium,
-            modifier = Modifier.padding(bottom = 16.dp)
-        )
+        // Header and settings button
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(bottom = 16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = "Select a Character",
+                style = MaterialTheme.typography.headlineMedium
+            )
 
+            IconButton(onClick = onSettingsClick) {
+                Icon(
+                    imageVector = Icons.Default.Settings,
+                    contentDescription = "Settings"
+                )
+            }
+        }
+
+        // Character grid
         LazyVerticalGrid(
             columns = GridCells.Fixed(2),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -83,12 +107,13 @@ fun CharacterSelectionScreen(
     }
 }
 
+
 @Composable
 private fun CharacterPicture(
     path: String?,
     name: String
 ) {
-    val bitmap = produceState<android.graphics.Bitmap?>(
+    val bitmap = produceState<Bitmap?>(
         initialValue = null,
         key1 = path
     ) {

@@ -1,5 +1,4 @@
-
-package com.ponywaifu.app
+package com.ponywaifu.app.ui
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
